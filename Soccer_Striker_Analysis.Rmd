@@ -1,0 +1,256 @@
+### SOCCER STRIKER ANALYSIS 
+
+### Introduction
+
+In sports analytics, understanding the factors influencing player performance is vital for team strategy and management, particularly for strikers whose impact can decide match outcomes. My research focuses on a key question: "Do younger players perform better as strikers, or do older players bring a competitive edge?" This analysis explores the relationship between age and striker performance metrics, revealing that older strikers often outperform younger ones by leveraging experience and tactical knowledge. Notably, strikers aged 36 exhibit peak performance, emphasizing the value of maturity and experience in high-level soccer.
+
+### Background
+
+
+> Data set description
+
+For my analysis, I used the "Combined FIFA DataSet (1930-2014)" from Kaggle, compiled by Anushka Hedaoo. This dataset spans eight decades of FIFA World Cup statistics, offering a consistent and reliable foundation for examining player performance up to 2014. Key variables include Age, Striker Rating, Overall Rating, and physical attributes like Acceleration, Sprint Speed, Stamina, and Strength, alongside technical skills such as Ball Control, Finishing, and Positioning.
+
+The Striker Rating reflects a player's effectiveness in the striker role, calculated as a weighted average of critical skills like Finishing and Ball Control. The Overall Rating provides a broader assessment of a player's abilities across various roles. My analysis focuses on the impact of age on striker efficiency and overall performance throughout different World Cups.
+> Age Group Categorization
+
+For my analysis, players were categorized into two age groups: 26 and under, and over 26. This division reflects trends in sports science, where players around 26 typically transition from potential to peak performance.
+
+> Data Citation
+
+ Hedaoo, Anushka. “Combined Fifa DataSet (1930-2014).” Kaggle, Apr. 2024, https://www.kaggle.com/datasets/anushkahedaoo/fifa-dataset?resource=download.  
+
+> Unusual factors
+
+Certain factors may have influenced the accuracy of the analysis. For instance, the method used to calculate striker ratings in the dataset was unclear, which posed challenges during data interpretation. Additionally, some players participated in multiple positions, such as striker and central midfield, complicating the analysis. Lastly, the dataset excludes data from the last two World Cups, limiting the scope to tournaments up to 2014.
+
+> Focus
+
+The analysis focused on three key aspects:
+
+1. The correlation between age and striker ratings as well as overall ratings.
+2. The relationship between age and physical/technical attributes.
+3. A comparison of overall performance scores between two age groups: 26 and under, and 27 and older.
+
+
+### Analysis
+
+> Data Preparation
+
+The dataset was cleaned and preprocessed using R. Irrelevant columns were removed, and missing values were handled to ensure the quality of the analysis. Players were classified into 2 age groups - (<=26) & (>26), and summary statistics were calculated for each group.
+
+> Exploratory Data Analysis
+
+Initial data exploration involved generating histograms and box plots to visualize the age distribution and key performance metrics. This step helped identify outliers and understand the central tendencies of the data.
+
+> Statistical Analysis
+
+Linear regression models were developed to assess the relationship between age and performance metrics such as overall rating and finishing ability. The models controlled for confounding variables such as club and nationality to isolate the effect of age. Hypothesis tests were conducted to determine if differences in performance metrics across age groups were statistically significant.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warning = FALSE, error = TRUE, fig.height = 3)
+library(tidyverse)
+library(kableExtra)
+source("../scripts/viridis.R")
+source("../scripts/ggprob.R")
+```
+
+``` {r, echo = FALSE}
+library(tidyverse)
+library(lubridate)
+library(stringr)
+
+player = read_csv("../data/Playerwise_data_csv.csv")
+
+player_clean = player %>% rename(preferred_positions = `Preferred Positions`, sprint_speed = `Sprint speed`, short_passing = `Short passing`, ball_control = `Ball control`) %>% 
+  select(Name, Age, Nationality, Overall, Club, preferred_positions, ST, sprint_speed, short_passing, Acceleration, Aggression, Agility, ball_control, Composure, Finishing, Positioning, Stamina, Strength ) %>% 
+  filter(grepl("ST", preferred_positions))
+
+player_clean <- player_clean %>%
+  mutate(
+    sprint_speed = as.numeric(as.character(sprint_speed)),
+    Acceleration = as.numeric(as.character(Acceleration)),
+    Stamina = as.numeric(as.character(Stamina)),
+    Strength = as.numeric(as.character(Strength)),
+    short_passing = as.numeric(as.character(short_passing)),
+    Agility = as.numeric(as.character(Agility)),
+    ball_control = as.numeric(as.character(ball_control)),
+    Composure = as.numeric(as.character(Composure)),
+    Finishing = as.numeric(as.character(Finishing)),
+    Positioning = as.numeric(as.character(Positioning)),
+    Aggression = as.numeric(as.character(Aggression))
+  )
+
+summary = player_clean %>% group_by(Age) %>% 
+  summarise(n = n(), ST = mean(ST, na.rm = TRUE), overall = mean(Overall, na.rm = TRUE), sprint_speed = mean(sprint_speed, na.rm = TRUE), short_passing = mean(short_passing, na.rm = TRUE), acceleration = mean(Acceleration, na.rm = TRUE), aggression = mean(Aggression, na.rm = TRUE), agility = mean(Agility, na.rm = TRUE), ball_control = mean(ball_control, na.rm = TRUE), composure = mean(Composure, na.rm = TRUE), finishing = mean(Finishing, na.rm = TRUE), positioning = mean(Positioning, na.rm = TRUE), stamina = mean(Stamina, na.rm = TRUE), strength = mean(Strength, na.rm = TRUE))
+
+st_score = summary %>% select(Age, n, ST)
+
+overall_score = summary %>% select(Age, n, overall)
+
+physical = summary %>% select(Age, sprint_speed, acceleration, stamina, strength)
+
+technical = summary %>% select(Age, short_passing, agility, ball_control, composure, finishing, positioning)
+
+```
+
+```{r, echo= FALSE}
+ggplot(player_clean, aes(x = factor(0), y = Age)) + geom_boxplot() + labs(title = "Distribution of Age among World Cup Strikers", x = NULL, y = "Age")
+```
+
+Looking at the above box plot which provides a visual summary of the age characteristics of World Cup strikers, it is clear that most players are in their mid-twenties to early thirties with a median of 25 years, ages are spread evenly around the median without extreme variations or outliers. 
+
+```{r, echo = FALSE}
+ggplot(player_clean, aes(x = factor(0), y = Overall)) + geom_boxplot() + labs(title = "Distribution of Overall Ratings", x = NULL, y = "Overall Rating")
+```
+
+The distribution of overall rating of World Cup players is presented in the above box plot, highlighting that while the majority have a rating around 66 and higher, a small number have lower-than-average ratings. These could represent rookies who just started their career.
+
+```{r, echo = FALSE}
+ggplot(player_clean, aes(x = factor(0), y = ST)) + geom_boxplot() + labs(title = "Distribution of Striker Ratings", x = NULL, y = "Striker Rating")
+```
+
+This box plot gives an insight into the variability and distribution of striker ratings among World Cup players. While most strikers have ratings clustered around the median which is around 65, there are notable exceptions on both the lower and higher ends of the scale. These outliers could represent particularly weak and strong performers, and those who are not mainly strikers.
+
+
+Having an overview of how age and key performance metrics are distribution through the visualization provided by the box plots, it's important to understand the correlations between age and these performance attributes.
+
+```{r,echo=FALSE}
+max_avg_st_age = st_score %>%
+  filter(ST == max(ST)) %>%
+  pull(Age)
+```
+
+```{r,echo=FALSE}
+ggplot(st_score, aes(x = Age, y = ST)) + geom_col(color = 'black', fill = 'red', alpha = 0.5) + geom_vline(xintercept = max_avg_st_age, linetype = "dashed", color = "green") + labs(title = "Average Striker Rating by Age", y = "Striker Rating")
+```
+
+This is a graph depicting average striker ratings by age group, with the peak striking rate at 36 indicated by the green dashed line.
+The highest average striker rating is observed at age 36, suggesting that players in this age group, despite their declining physical abilities, might compensate with greater experience, tactical knowledge, and even better finishing skills.  The visualization underscores a notable trend where striker efficiency seems to increase with age, peaking in the late 30s. This could imply that mental attributes like composure and positioning play a significant role with increase in experience. 
+
+```{r,echo=FALSE}
+max_avg_overall = overall_score %>%
+  filter(overall == max(overall)) %>%
+  pull(Age)
+
+ggplot(overall_score, aes(x = Age, y = overall)) + geom_col(color = 'black', fill = 'orange', alpha = 0.5) + geom_vline(xintercept = max_avg_overall, linetype = "dashed", color = "green") + labs(title = "Average Overall Rating by Age", y = "Overall Rating")
+```
+
+The above bar chart displays overall ratings by age and displays a steady trend in overall ratings across different age groups, possibly peaking at certain ages, which would highlight the ages where players are at their optimal performance level. 
+Players in the later stages of their career often show higher overall ratings. This increase could be attributed to the accumulation of experience, game intelligence, and improved tactical awareness, which compensate for the decline in physical aspects of the game. This Analysis provides a clear picture to coaches and team selectors to consider the  players based on their overall performance ratings. 
+
+```{r,echo=FALSE}
+
+ggplot(physical, aes(x = Age)) + 
+  geom_line(aes(y = sprint_speed, color = "Sprint Speed")) + 
+  geom_line(aes(y = acceleration, color = "Acceleration")) + 
+  geom_line(aes(y = stamina, color = "Stamina")) + 
+  geom_line(aes(y = strength, color = "Strength")) +
+  labs(color = "Attribute", y = "Physical Attributes") +
+  ggtitle("Physical Attributes by Age")
+```
+The above graph contains Line graphs for some important  physical attributes (sprint speed, acceleration, stamina, strength) plotted against age, showing how each attribute trends over the player's age. We notice that sprint speed and acceleration show a decline as the player ages, while stamina and strength seem to show an improvement, indicating the shift in the type of training from speed to endurance and physical resilience as the player grows older. 
+
+```{r}
+find_intersections <- function(df, col1, col2) {
+  require(dplyr)
+  df %>%
+    mutate(Difference = abs(df[[col1]] - df[[col2]])) %>%
+    arrange(Difference) %>%
+    filter(Difference < 1) %>% 
+  select(Age, col1, col2)
+}
+
+intersec_acc_sprint <- find_intersections(physical, "acceleration", "sprint_speed")
+intersec_stamina_strength <- find_intersections(physical, "stamina", "strength")
+
+ggplot(physical, aes(x = Age)) + 
+  geom_line(aes(y = sprint_speed, color = "Sprint Speed")) + 
+  geom_line(aes(y = acceleration, color = "Acceleration")) + 
+  geom_line(aes(y = stamina, color = "Stamina")) + 
+  geom_line(aes(y = strength, color = "Strength")) +
+  geom_point(data = intersec_acc_sprint, aes(y = acceleration, color = "Intersection Acc-Sprint"), size = 3, shape = 18, fill = "red") +
+  geom_point(data = intersec_stamina_strength, aes(y = stamina, color = "Intersection Stam-Str"), size = 3, shape = 18, fill = "blue") +
+  labs(color = "Attribute", y = "Physical Attributes") +
+  ggtitle("Physical Attributes by Age")
+ages_acc_sprint <- intersec_acc_sprint$Age
+ages_stamina_strength <- intersec_stamina_strength$Age
+
+intersection_ages_summary <- list(
+  "Acceleration and Sprint Speed Intersections" = ages_acc_sprint,
+  "Stamina and Strength Intersections" = ages_stamina_strength
+)
+
+print(intersection_ages_summary)
+```
+
+we plotted the points where there were intersections between acceleration & sprintspeed and stamina & strength.
+
+The data shows intersection ages for acceleration and sprint speed ranging from 17 to 37, with common intersections at ages 21 and 27 indicating that these ages are important times for quick bursts of speed and maintaining constant long sprints during games.
+At age 21, where stamina and strength intersect, there is an ideal balance between a player's endurance and power. This age is particularly important for football players to focus on training that boosts both stamina and strength, ensuring they can handle the physical demands of a full match.
+Identifying these intersection points can help coaches and athletes improve training practices that address the shifting balance between different physical attributes. For instance, if acceleration declines relative to sprint speed, more agility training might be incorporated to enhance explosive movements.
+
+
+```{r,echo=FALSE}
+ggplot(technical, aes(x = Age)) + 
+  geom_line(aes(y = short_passing, color = "Short Passing")) +
+  geom_line(aes(y = agility, color = "Agility")) +
+  geom_line(aes(y = ball_control, color = "Ball Control")) +
+  geom_line(aes(y = composure, color = "Composure")) +
+  geom_line(aes(y = finishing, color = "Finishing")) +
+  geom_line(aes(y = positioning, color = "Positioning")) +
+  labs(color = "Skill", y = "Technical Attributes") +
+  ggtitle("Technical Attributes by Age")
+
+```
+
+The above line graphs show trends in technical skills (short passing, agility, ball control, composure, finishing, positioning) against player age.
+We notice that as players age, there is often an improvement in skills like composure, finishing, and positioning, which require less physical exertion but more experience and tactical awareness. Skills such as ball control and short passing show constant progress and remain stable indicating that they do not experience much trend change with increase in age.
+
+```{r, echo = FALSE}
+younger = st_score %>% filter(Age <= 26)
+younger_st = younger$ST
+older = st_score %>% filter(Age > 26)
+older_st = older$ST
+result = t.test(younger_st, older_st)
+t_value = result$statistic
+p_value = result$p.value
+conf_int = result$conf.int
+```
+A Welch Two Sample t-test is run to compare the means of striker ratings between two groups of players: younger players (ages 26 and under) and older players (ages over 26). 
+```{r, echo = FALSE}
+cat("The t-value of the test is", sprintf("%.5f", t_value))
+```
+The t-value is -4.6, indicating that the mean striker rating of the younger group is lower than that of the older group. 
+```{r, echo = FALSE}
+cat("The p-value of the test is", sprintf("%.5f", p_value))
+```
+A p-value of 0.0008 suggests that the difference in mean striker ratings between the two groups is statistically significant, indicating strong evidence against the null hypothesis, which assumes no difference in means. 
+```{r, echo = FALSE}
+cat("The 95% confidence interval of the mean difference ranges from", sprintf("%.2f", conf_int[1]), "to", sprintf("%.2f", conf_int[2]))
+```
+The 95% confidence interval is entirely below zero, which further proofs that the mean striker rating for younger players is significantly lower than that for older players. 
+
+In sum, the t-test analysis clearly indicates that older players have significantly higher striker ratings than younger players, suggesting that age (associated factors like experience and tactical understanding) plays a crucial role in a player's effectiveness as a striker.
+
+
+```{r, echo = FALSE}
+combined_data = st_score %>%
+  mutate(Group = ifelse(Age <= 26, "Younger", "Older"))
+ggplot(combined_data, aes(x = ST, fill = Group)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density of Strikers Rating by Age Group",
+       x = "Strikers Rating",
+       y = "Density") +
+  theme_minimal()
+```
+
+By comparing the distribution of striker performance between the two age groups, a clear distinction emerges. Younger players exhibit a broader distribution, reflecting greater variability in performance, while older players display a denser, higher peak, indicating consistency and stronger performance levels. This suggests that experience plays a vital role, though older players may present a risk due to limited longevity. These insights highlight the importance for coaches and team selectors to build balanced teams that combine the energy of youth with the reliability of experience.
+
+
+### Discussion
+
+The analysis reveals that strikers aged 36 excel in both striking proficiency and overall performance, compensating for declines in physical attributes like acceleration and stamina with improved agility, ball control, and finishing skills. Older strikers demonstrate higher mean overall scores with less variability, underscoring their consistency and reliability. However, the study is limited by potential biases in player selection for World Cup teams and the absence of injury data.
+
+Future research could address these gaps by incorporating injury data and expanding the dataset to include tournaments like the UEFA European Championship. Longitudinal studies tracking individual performance changes could offer deeper insights into how aging players adapt their style of play. Additionally, exploring the influence of coaching strategies, psychological factors, and the relationship between domestic league quality and international performance could provide practical applications in sports analytics. These directions would enhance understanding of aging athletes and inform player selection and team strategy.
